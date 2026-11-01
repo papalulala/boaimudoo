@@ -17,11 +17,12 @@ const draco=new DRACOLoader();draco.setDecoderPath('https://www.gstatic.com/drac
 new GLTFLoader().setDRACOLoader(draco).load('campus.glb',g=>{const model=g.scene;const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());const scale=3.6/Math.max(size.x,size.y,size.z);model.position.sub(center);const group=new THREE.Group();group.add(model);group.scale.setScalar(scale);group.position.y=size.y*scale/2;scene.add(group);loading.hidden=true;},e=>{if(e.total)loading.textContent=`正在載入校園 ${Math.round(e.loaded/e.total*100)}%`;},()=>{loading.textContent='模型載入失敗，請重新整理頁面。';});
 new ResizeObserver(()=>{const w=panel.clientWidth,h=panel.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}).observe(panel);
 renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
-document.querySelector('#reset').onclick=reset;
-document.querySelector('#rotate').onclick=e=>{controls.autoRotate=!controls.autoRotate;e.currentTarget.setAttribute('aria-pressed',String(controls.autoRotate));};
+
+
 const ar=document.querySelector('#ar'),arModel=document.querySelector('#ar-model'),note=document.querySelector('#ar-note');
 await customElements.whenDefined('model-viewer');
-arModel.addEventListener('load',()=>{ar.disabled=false;if(!arModel.canActivateAR)note.textContent='此裝置可瀏覽 3D；請用支援 AR 的手機開啟相同網址。';});
+arModel.addEventListener('load',()=>{ar.disabled=false;});
 arModel.addEventListener('error',()=>{note.textContent='AR 模型載入失敗，請重新整理再試。';});
-ar.onclick=async()=>{if(!arModel.canActivateAR){note.textContent='請使用支援 AR 的 Android 手機或 iPhone Safari 開啟此網址。';return;}try{await arModel.activateAR();}catch(e){note.textContent='AR 尚未啟動，請確認相機權限後再試。';}};
+ar.onclick=async()=>{note.hidden=false;if(!arModel.canActivateAR){note.textContent='請使用支援 AR 的 Android 手機或 iPhone Safari 開啟此網址。';return;}try{await arModel.activateAR();}catch(e){note.textContent='AR 尚未啟動，請確認相機權限後再試。';}};
 arModel.addEventListener('ar-status',e=>{if(e.detail.status==='failed')note.textContent='無法啟動 AR，請確認裝置支援與相機權限。';});
+
