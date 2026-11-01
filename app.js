@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 const canvas=document.querySelector('#scene'),panel=document.querySelector('.viewer'),loading=document.querySelector('#loading');
 const scene=new THREE.Scene();
@@ -10,7 +10,8 @@ let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});}catch(e){loading.textContent='這個裝置無法開啟 3D，請改用支援 WebGL 的瀏覽器。';throw e;}
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
 
-const pmrem=new THREE.PMREMGenerator(renderer);const room=new RoomEnvironment();scene.environment=pmrem.fromScene(room,.04).texture;scene.environmentIntensity=.22;room.dispose();pmrem.dispose();
+scene.add(new THREE.HemisphereLight(0xffffff,0x718260,.85));
+const fill=new THREE.DirectionalLight(0xdceaff,.55);fill.position.set(4,3,-3);scene.add(fill);
 renderer.shadowMap.autoUpdate=false;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const key=new THREE.DirectionalLight(0xfff5e7,1.7);key.position.set(-3,5,4);key.target.position.set(0,.2,0);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-2.5,right:2.5,top:2,bottom:-2,near:.1,far:15});key.shadow.bias=-.00015;key.shadow.normalBias=.003;key.shadow.radius=2;scene.add(key,key.target);
 
@@ -28,6 +29,7 @@ arModel.addEventListener('load',()=>{ar.disabled=false;});
 arModel.addEventListener('error',()=>{note.textContent='AR 模型載入失敗，請重新整理再試。';});
 ar.onclick=async()=>{note.hidden=false;if(!arModel.canActivateAR){note.textContent='請使用支援 AR 的 Android 手機或 iPhone Safari 開啟此網址。';return;}try{await arModel.activateAR();}catch(e){note.textContent='AR 尚未啟動，請確認相機權限後再試。';}};
 arModel.addEventListener('ar-status',e=>{if(e.detail.status==='failed')note.textContent='無法啟動 AR，請確認裝置支援與相機權限。';});
+
 
 
 
