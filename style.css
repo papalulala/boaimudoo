@@ -4,3 +4,4 @@
 
 .lettering img{image-rendering:-webkit-optimize-contrast;filter:contrast(1.06)}
 .actions{gap:12px}.expo-link{display:block;width:var(--ar-button-width,180px);flex:none;touch-action:manipulation;outline-offset:5px}.expo-link img{display:block;width:100%;height:auto;transform:scale(1);transform-origin:center;transition:transform 1.2s cubic-bezier(.22,.61,.36,1)}@media(hover:hover){.expo-link:hover img{transform:scale(.8)}}.expo-link:focus-visible img,.expo-link.is-touching img,.expo-link:active img{transform:scale(.8)}@media(prefers-reduced-motion:reduce){.expo-link img{transition:none}}
+@media(min-width:701px){#ar{font-size:12px;padding:12.8px 24px;border-radius:32px}}
