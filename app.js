@@ -44,3 +44,8 @@ let orbitStart=null;
 controls.addEventListener('start',()=>{orbitStart={azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()};});
 controls.addEventListener('change',()=>{if(!orbitStart||lettering.classList.contains('is-compact'))return;const angle=Math.abs(controls.getAzimuthalAngle()-orbitStart.azimuth)+Math.abs(controls.getPolarAngle()-orbitStart.polar);if(angle>.006)lettering.classList.add('is-compact');});
 controls.addEventListener('end',()=>{orbitStart=null;});
+const expoLink=document.querySelector('.expo-link');
+new ResizeObserver(entries=>{document.querySelector('.actions').style.setProperty('--ar-button-width',`${entries[0].target.getBoundingClientRect().width}px`);}).observe(ar);
+expoLink.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')expoLink.classList.add('is-touching');});
+const releaseExpo=()=>expoLink.classList.remove('is-touching');
+expoLink.addEventListener('pointerup',releaseExpo);expoLink.addEventListener('pointercancel',releaseExpo);expoLink.addEventListener('pointerleave',releaseExpo);
