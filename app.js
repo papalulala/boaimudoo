@@ -8,9 +8,9 @@ const camera=new THREE.PerspectiveCamera(38,1,.01,200);
 let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});}catch(e){loading.textContent='這個裝置無法開啟 3D，請改用支援 WebGL 的瀏覽器。';throw e;}
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
-scene.add(new THREE.HemisphereLight(0xffffff,0xa3b394,2.4));
+
 const key=new THREE.DirectionalLight(0xfff5e7,2.6);key.position.set(-3,8,5);scene.add(key);
-const fill=new THREE.DirectionalLight(0xe8f2ff,1.4);fill.position.set(5,3,-4);scene.add(fill);
+
 const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.minDistance=1;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*.48;controls.autoRotateSpeed=.7;
 function reset(){camera.position.set(0,2.8,4.6);controls.target.set(0,.22,0);controls.update();}reset();
 const draco=new DRACOLoader();draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
@@ -25,4 +25,5 @@ arModel.addEventListener('load',()=>{ar.disabled=false;});
 arModel.addEventListener('error',()=>{note.textContent='AR 模型載入失敗，請重新整理再試。';});
 ar.onclick=async()=>{note.hidden=false;if(!arModel.canActivateAR){note.textContent='請使用支援 AR 的 Android 手機或 iPhone Safari 開啟此網址。';return;}try{await arModel.activateAR();}catch(e){note.textContent='AR 尚未啟動，請確認相機權限後再試。';}};
 arModel.addEventListener('ar-status',e=>{if(e.detail.status==='failed')note.textContent='無法啟動 AR，請確認裝置支援與相機權限。';});
+
 
