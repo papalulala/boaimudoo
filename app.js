@@ -38,3 +38,9 @@ arModel.addEventListener('ar-status',e=>{if(e.detail.status==='failed')note.text
 
 
 
+// Compact lettering only after a real orbit, not a click, pan, or zoom.
+const lettering=document.querySelector('.lettering');
+let orbitStart=null;
+controls.addEventListener('start',()=>{orbitStart={azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()};});
+controls.addEventListener('change',()=>{if(!orbitStart||lettering.classList.contains('is-compact'))return;const angle=Math.abs(controls.getAzimuthalAngle()-orbitStart.azimuth)+Math.abs(controls.getPolarAngle()-orbitStart.polar);if(angle>.006)lettering.classList.add('is-compact');});
+controls.addEventListener('end',()=>{orbitStart=null;});
