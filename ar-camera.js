@@ -21,20 +21,20 @@ function motionPermission(){
 }
 export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
  const overlay=document.querySelector('#camera-ar'),canvas=document.querySelector('#camera-ar-canvas'),surface=document.querySelector('#camera-ar-stage'),status=document.querySelector('#camera-ar-status'),place=document.querySelector('#camera-ar-place'),reset=document.querySelector('#camera-ar-reset'),exit=document.querySelector('#camera-ar-exit');
- let XR,active=false,starting=false,token=0,tracking=false,placed=false,lastHit=null,anchor,content,reticle,arMixer,arScene,arCamera,arLights,lastTime=0;
+ let XR,active=false,starting=false,token=0,tracking=false,placed=false,autoPlacePending=false,lastHit=null,anchor,content,reticle,arMixer,arScene,arCamera,arLights,lastTime=0;
  const pointers=new Map();let gesture=null;
  const setStatus=t=>{status.textContent=t;};
  function resize(){if(!active&&!starting)return;canvas.width=surface.clientWidth;canvas.height=surface.clientHeight;}
  function clearPointers(){for(const id of pointers.keys())try{surface.releasePointerCapture(id);}catch{}pointers.clear();gesture=null;}
  function rebase(){const p=[...pointers.values()];gesture=content?{p:p.map(x=>({...x})),scale:content.scale.x,yaw:content.rotation.y,d:p.length===2?Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y):0,a:p.length===2?Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x):0}:null;}
- surface.addEventListener('pointerdown',e=>{if(!active||!placed||!tracking||pointers.size>=2||(e.pointerType==='mouse'&&e.button!==0))return;e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});surface.setPointerCapture(e.pointerId);rebase();});
+ surface.addEventListener('pointerdown',e=>{if(!active||!placed||pointers.size>=2||(e.pointerType==='mouse'&&e.button!==0))return;e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});surface.setPointerCapture(e.pointerId);rebase();});
  surface.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId)||!gesture)return;e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});const p=[...pointers.values()];if(p.length===1&&gesture.p.length===1)content.rotation.y=gesture.yaw+(p[0].x-gesture.p[0].x)*.008;else if(p.length===2&&gesture.d>8){content.scale.setScalar(THREE.MathUtils.clamp(gesture.scale*Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y)/gesture.d,.10,.85));const a=Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x)-gesture.a;content.rotation.y=gesture.yaw+Math.atan2(Math.sin(a),Math.cos(a));}});
  for(const type of ['pointerup','pointercancel','lostpointercapture'])surface.addEventListener(type,e=>{pointers.delete(e.pointerId);rebase();});
  async function stop({focus=true}={}){
   ++token;active=false;starting=false;tracking=false;clearPointers();
   try{if(XR){await XR.stop();XR.clearCameraPipelineModules();}}catch(e){console.warn('AR cleanup',e);}
   if(anchor)arScene?.remove(anchor);if(arLights)arScene?.remove(arLights);if(reticle){arScene?.remove(reticle);reticle.geometry.dispose();reticle.material.dispose();}
-  anchor=content=reticle=arMixer=arScene=arCamera=null;lastHit=null;placed=false;overlay.hidden=true;document.body.classList.remove('camera-ar-open');onExit();button.disabled=false;if(focus)button.focus();
+  anchor=content=reticle=arMixer=arScene=arCamera=null;lastHit=null;placed=false;autoPlacePending=false;overlay.hidden=true;document.body.classList.remove('camera-ar-open');onExit();button.disabled=false;if(focus)button.focus();
  }
  function fail(e,current){if(current!==token)return;starting=false;active=false;place.disabled=true;clearPointers();Promise.resolve(XR?.stop()).catch(()=>{});setStatus(e?.message||'無法啟動 AR，請確認相機權限。');}
  place.onclick=()=>{
@@ -48,7 +48,7 @@ export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
   anchor.visible=true;placed=true;reticle.visible=false;place.hidden=true;reset.hidden=false;
   setStatus(lastHit&&tracking?'單指旋轉・雙指縮放或轉向・移動手機從不同角度觀看':'已先顯示在鏡頭前方。可單指旋轉、雙指縮放；找到桌面後再按「重新定位」。');
  };
- reset.onclick=()=>{if(!active)return;clearPointers();placed=false;anchor.visible=false;content.scale.setScalar(.28);content.rotation.set(0,0,0);lastHit=null;place.hidden=false;place.disabled=false;place.textContent='先顯示校園';reset.hidden=true;setStatus('請慢慢掃描桌面或地面，或點「先顯示校園」放在鏡頭前方。');};
+ reset.onclick=()=>{if(!active)return;clearPointers();autoPlacePending=false;placed=false;anchor.visible=false;content.scale.setScalar(.28);content.rotation.set(0,0,0);lastHit=null;place.hidden=false;place.disabled=false;place.textContent='先顯示校園';reset.hidden=true;setStatus('請慢慢掃描桌面或地面，或點「先顯示校園」放在鏡頭前方。');};
  exit.onclick=()=>stop();
  button.onclick=async()=>{
   if(starting||active)return;
@@ -67,10 +67,11 @@ export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
     // The clone has the same node names, allowing every original GLB clip to run together.
     arMixer=new THREE.AnimationMixer(content);campus.clips.forEach(clip=>arMixer.clipAction(clip).play());
     reticle=new THREE.Mesh(new THREE.RingGeometry(.06,.075,48),new THREE.MeshBasicMaterial({color:0x55e8a4,side:THREE.DoubleSide,depthTest:false}));reticle.rotation.x=-Math.PI/2;reticle.visible=false;scene.add(reticle);
-    camera.position.set(0,2,0);XR.XrController.updateCameraProjectionMatrix({origin:camera.position,facing:camera.quaternion});active=true;starting=false;lastTime=performance.now();placed=false;place.disabled=false;place.textContent='先顯示校園';setStatus('請慢慢掃描桌面或地面，或點「先顯示校園」放在鏡頭前方。');resolveStart();
+    camera.position.set(0,2,0);XR.XrController.updateCameraProjectionMatrix({origin:camera.position,facing:camera.quaternion});active=true;starting=false;lastTime=performance.now();placed=false;autoPlacePending=true;place.hidden=true;place.disabled=false;setStatus('正在將校園顯示在鏡頭前方…');resolveStart();
    },onUpdate:({processCpuResult})=>{
     if(current!==token||!active)return;const now=performance.now(),dt=(now-lastTime)/1000;lastTime=now;
     const reality=processCpuResult?.reality;if(reality){const next=reality.trackingStatus==='NORMAL';if(tracking&&!next){clearPointers();setStatus('定位暫時不穩，請緩慢移動手機，或按「重新定位」。');}if(!tracking&&next)setStatus(placed?'單指旋轉・雙指縮放或轉向':'掃描桌面等待綠圈，或點「先顯示校園」放在鏡頭前方。');tracking=next;}
+    if(autoPlacePending&&reality){autoPlacePending=false;place.onclick();}
     if(placed){anchor.visible=true;if(!document.hidden)arMixer.update(dt);return;}
     lastHit=null;if(tracking)for(const y of [.6,.75,.9]){try{const hits=XR.XrController.hitTest(.5,y,['DETECTED_SURFACE','ESTIMATED_SURFACE']);lastHit=hits.find(h=>h.position&&[h.position.x,h.position.y,h.position.z].every(Number.isFinite))||null;}catch{}if(lastHit)break;}
     reticle.visible=!!lastHit;place.disabled=false;place.textContent=lastHit?'放置校園':'先顯示校園';if(lastHit)reticle.position.set(lastHit.position.x,lastHit.position.y+.002,lastHit.position.z);
@@ -84,3 +85,4 @@ export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&(active||starting))stop({focus:false});});
  window.addEventListener('pagehide',()=>{if(active||starting)stop({focus:false});});
 }
+
