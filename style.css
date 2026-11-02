@@ -8,3 +8,11 @@
 .actions{position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none}.actions>a,.actions>button{pointer-events:auto}.actions #ar-note{pointer-events:none}
 
 [hidden]{display:none!important}.camera-ar-open{overflow:hidden}#camera-ar{position:fixed;inset:0;z-index:20;background:#000;color:#fff}#camera-ar-stage{position:absolute;inset:0;touch-action:none}#camera-ar-canvas{width:100%;height:100%;touch-action:none}.camera-ar-top{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;pointer-events:none}.camera-ar-top button{pointer-events:auto}.camera-ar-bottom{position:absolute;bottom:max(30px,env(safe-area-inset-bottom));left:16px;right:16px;text-align:center;pointer-events:none}.camera-ar-bottom button{pointer-events:auto}.camera-ar-top button,.camera-ar-bottom button{background:#244f3cdd;backdrop-filter:blur(8px)}#camera-ar-status{margin:0 auto 14px;max-width:520px;background:#000a;padding:12px 18px;border-radius:16px;font-size:14px;line-height:1.6}.ar-credit{position:absolute;right:10px;bottom:8px;font-size:10px;color:#fff9;pointer-events:none}
+
+/* Gentle independent motion; left/top/width retain the existing four-second transition. */
+@keyframes lettering-float{0%,100%{transform:translateY(calc(-1 * var(--float-distance)))}50%{transform:translateY(var(--float-distance))}}
+.lettering .title-art{--float-distance:4px;animation:lettering-float 7s ease-in-out infinite}
+.lettering .story-art{--float-distance:3px;animation:lettering-float 8.5s ease-in-out -2.4s infinite}
+@media(max-width:700px){.lettering .title-art{--float-distance:3px}.lettering .story-art{--float-distance:2px}}
+.camera-ar-open .lettering img{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.lettering .title-art,.lettering .story-art{animation:none;transform:none}}
