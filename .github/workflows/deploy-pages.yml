@@ -1,4 +1,4 @@
-name: Deploy campus with animated AR
+name: Deploy campus WebAR
 on:
   push:
     branches: [main]
@@ -19,13 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/configure-pages@v5
-      - name: Build site and assemble animated USDZ
+      - name: Build camera AR site
         run: |
           mkdir _site
-          cp index.html app.js style.css campus.glb title-art.png story-art.png enter-site.png _site/
-          cat campus-ar-1.bin campus-ar-2.bin campus-ar-3.bin campus-ar-4.bin campus-ar-5.bin > _site/campus-animated.usdz
-          echo '4225baa265e8392495be7cea9c9d061e9a7c09ca0e044874700846b14fcf4d3d  _site/campus-animated.usdz' | sha256sum -c -
-          python -m zipfile -t _site/campus-animated.usdz
+          cp index.html app.js ar-camera.js style.css campus.glb title-art.png story-art.png enter-site.png _site/
+          node --check _site/app.js
+          node --check _site/ar-camera.js
+          test -s _site/campus.glb
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v4
         with:
