@@ -1,4 +1,4 @@
-import {setupCameraAR} from './ar-camera.js?v=30';
+import {setupCameraAR} from './ar-camera.js?v=31';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';

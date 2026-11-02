@@ -37,7 +37,9 @@ export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
   if(!active&&!starting&&overlay.hidden&&!arScene)return Promise.resolve();
   ++token;active=false;starting=false;stopping=true;tracking=false;clearTimeout(firstPoseTimer);firstPoseTimer=null;cancelStart?.();cancelStart=null;clearPointers();
   button.disabled=true;exit.disabled=true;place.disabled=true;reset.disabled=true;setStatus('正在關閉相機…');
-  stopPromise=(async()=>{
+  // Defer cleanup until stopPromise is assigned, even if engine.stop throws
+  // synchronously. Otherwise a resolved stale promise can block later exits.
+  stopPromise=Promise.resolve().then(async()=>{
    try{await XR?.stop();}catch(e){console.warn('AR camera stop',e);}
    finally{
     cleanup(()=>XR?.clearCameraPipelineModules());
@@ -52,7 +54,7 @@ export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
     overlay.hidden=true;document.body.classList.remove('camera-ar-open');button.disabled=false;exit.disabled=false;reset.disabled=false;stopping=false;stopPromise=null;
     cleanup(onExit);if(focus&&!document.hidden)button.focus();
    }
-  })();return stopPromise;
+  });return stopPromise;
  }
  async function fail(e,current){
   if(current!==token||stopping)return;
@@ -104,8 +106,8 @@ export function setupCameraAR({button,note,getCampus,onEnter,onExit}){
     reticle.visible=!!lastHit;place.disabled=false;place.textContent=lastHit?'放置校園':'先顯示校園';if(lastHit)reticle.position.set(lastHit.position.x,lastHit.position.y+.002,lastHit.position.z);
    },onException:e=>{if(current!==token)return;rejectStart(e);void fail(e,current);},onCameraStatusChange:({status})=>{if(current!==token||status!=='failed')return;const error=Error('相機無法開啟，請允許相機權限，並關閉其他使用鏡頭的程式後再試。');rejectStart(error);if(active)void fail(error,current);}};
    XR.addCameraPipelineModules([XR.GlTextureRenderer.pipelineModule(),XR.Threejs.pipelineModule(),XR.XrController.pipelineModule(),module]);
-   Promise.resolve(engine.run({canvas,allowedDevices:engine.XrConfig.device().ANY})).then(()=>{
-    if(current!==token&&!active&&!starting&&!stopping)Promise.resolve(engine.stop()).catch(()=>{});
+   Promise.resolve(engine.run({canvas,allowedDevices:engine.XrConfig.device().ANY})).then(async()=>{
+    if(current!==token&&!active&&!starting&&!stopping){try{await engine.stop();}catch{}}
    },e=>{if(current===token){rejectStart(e);if(active)void fail(e,current);}});
    let timer;try{await Promise.race([started,cancelled,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('相機啟動逾時，請再試一次。')),60000);})]);}finally{clearTimeout(timer);if(current===token)cancelStart=null;}
   }catch(e){await fail(e,current);}
