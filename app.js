@@ -53,6 +53,8 @@ function updateDaylight(delta) {
   ambient.intensity = THREE.MathUtils.lerp(from.skyPower, to.skyPower, blend);
   fill.intensity = THREE.MathUtils.lerp(from.fillPower, to.fillPower, blend);
   key.shadow.intensity = THREE.MathUtils.lerp(from.shadow, to.shadow, blend);
+  const whitening = THREE.MathUtils.smoothstep(dayTime, 22, 52) * (1 - THREE.MathUtils.smoothstep(dayTime, 72, 96));
+  panel.style.setProperty("--lettering-white", whitening.toFixed(3));
   topColor.copy(from.top).lerp(to.top, blend);
   bottomColor.copy(from.bottom).lerp(to.bottom, blend);
   panel.style.backgroundImage = 'linear-gradient(180deg,' + topColor.getStyle() + ',' + bottomColor.getStyle() + ')';
@@ -83,6 +85,7 @@ new ResizeObserver(entries=>{document.querySelector('.actions').style.setPropert
 expoLink.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')expoLink.classList.add('is-touching');});
 const releaseExpo=()=>expoLink.classList.remove('is-touching');
 expoLink.addEventListener('pointerup',releaseExpo);expoLink.addEventListener('pointercancel',releaseExpo);expoLink.addEventListener('pointerleave',releaseExpo);
+
 
 
 
