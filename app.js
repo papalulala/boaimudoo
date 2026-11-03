@@ -60,7 +60,7 @@ const phases = [
   sun: new THREE.Color(sun), sky: new THREE.Color(sky), sunPower, skyPower, fillPower, shadow,
 }));
 const topColor = new THREE.Color(), bottomColor = new THREE.Color();
-let dayTime = 0, lastLightingTime = -1;
+let dayTime = 0, lastLightingTime = -1, lastLightingState;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 function updateDaylight(delta) {
   if (reducedMotion.matches) dayTime = 0;
@@ -71,6 +71,9 @@ function updateDaylight(delta) {
   const from = phases[next - 1], to = phases[next];
   const fraction = (dayTime - from.time) / (to.time - from.time);
   const blend = fraction * fraction * (3 - 2 * fraction);
+  const state = next === 1 || next === 6 ? next : null;
+  if (state !== null && state === lastLightingState) return;
+  lastLightingState = state;
   key.color.copy(from.sun).lerp(to.sun, blend);
   ambient.color.copy(from.sky).lerp(to.sky, blend);
   key.intensity = THREE.MathUtils.lerp(from.sunPower, to.sunPower, blend);
@@ -93,33 +96,23 @@ function renderFrame() {
   }
   renderer.render(scene, camera);
 }
-renderer.setAnimationLoop(renderFrame);
+function syncHomeRendering() {
+  const suspended = document.hidden || document.body.classList.contains('camera-ar-open');
+  renderer.setAnimationLoop(suspended ? null : renderFrame);
+  if (!suspended) clock.start();
+}
+document.addEventListener('visibilitychange', syncHomeRendering);
+syncHomeRendering();
 
 
 const ar=document.querySelector('#ar'),note=document.querySelector('#ar-note');
-setupCameraAR({button:ar,note,getCampus:()=>campusReady,onEnter:()=>{renderer.setAnimationLoop(null);setWindowGlow(0);lastLightingTime=-1;},onExit:()=>{clock.start();renderer.setAnimationLoop(renderFrame);}});
-
-// Compact lettering only after a real orbit, not a click, pan, or zoom.
-const lettering=document.querySelector('.lettering');
-let orbitStart=null;
-controls.addEventListener('start',()=>{orbitStart={azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()};});
-controls.addEventListener('change',()=>{if(!orbitStart||lettering.classList.contains('is-compact'))return;const angle=Math.abs(controls.getAzimuthalAngle()-orbitStart.azimuth)+Math.abs(controls.getPolarAngle()-orbitStart.polar);if(angle>.006)lettering.classList.add('is-compact');});
-controls.addEventListener('end',()=>{orbitStart=null;});
-const expoLink=document.querySelector('.expo-link');
-new ResizeObserver(entries=>{document.querySelector('.actions').style.setProperty('--ar-button-width',`${entries[0].target.getBoundingClientRect().width}px`);}).observe(ar);
-expoLink.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')expoLink.classList.add('is-touching');});
-const releaseExpo=()=>expoLink.classList.remove('is-touching');
-expoLink.addEventListener('pointerup',releaseExpo);expoLink.addEventListener('pointercancel',releaseExpo);expoLink.addEventListener('pointerleave',releaseExpo);
-
-
-
-
-
-
-
-
-
-
-
-
-
+setupCameraAR({
+  button: ar, note, getCampus: () => campusReady,
+  onEnter: () => {
+    syncHomeRendering();
+    setWindowGlow(0);
+    lastLightingTime = -1;
+    lastLightingState = undefined;
+  },
+  onExit: syncHomeRendering,
+});
