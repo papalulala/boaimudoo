@@ -20,7 +20,31 @@ const key=new THREE.DirectionalLight(0xfff5e7,1.7);key.position.set(-3,5,4);key.
 const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.minDistance=1;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*.48;controls.autoRotateSpeed=.7;
 function reset(){camera.position.set(0,.35,3.8);controls.target.set(0,.22,0);controls.update();}reset();
 const draco=new DRACOLoader();draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
-new GLTFLoader().setDRACOLoader(draco).load('campus.glb?v=28',g=>{const model=g.scene;if(g.animations.length){mixer=new THREE.AnimationMixer(model);g.animations.forEach(clip=>mixer.clipAction(clip).play());}model.traverse(o=>{if(o.isMesh){o.castShadow=!/^(Cluster\d_Star|Train|Rail|Bird)/.test(o.name);o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){m.roughness=Math.max(m.roughness??.8,.75);}}});const box=new THREE.Box3();model.updateMatrixWorld(true);model.traverse(o=>{if(o.isMesh&&!/^(Train|Rail|Bird)/.test(o.name))box.expandByObject(o);});const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());const scale=3.6/Math.max(size.x,size.y,size.z);model.position.sub(center);const group=new THREE.Group();group.add(model);group.scale.setScalar(scale);group.position.y=size.y*scale/2;scene.add(group);renderer.shadowMap.needsUpdate=true;loading.hidden=true;resolveCampus({group,clips:g.animations});document.querySelector('#ar').disabled=false;},e=>{if(e.total)loading.textContent=`正在載入校園 ${Math.min(100,Math.round(e.loaded/e.total*100))}%`;},()=>{loading.textContent='模型載入失敗，請重新整理頁面。';rejectCampus(Error('校園模型載入失敗，請重新整理。'));});
+const litWindows = new Set();
+const windowMaterials = new Set([16, 29, 42, 74, 277, 419, 466]);
+const windowGlow = new THREE.Color(0xffc573);
+function collectWindows(model, parser) {
+  model.traverse(mesh => {
+    if (!mesh.isMesh) return;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const updated = materials.map(material => {
+      const id = parser.associations.get(material)?.materials;
+      const namedWindow = /^(?:Ground_floor_window|Upstairs_window|03_Yellow_building.*Upper_ochre_window|02_Pink_school.*(?:Tower_dark_inset|Wide_center_inset))/.test(mesh.name);
+      const cityPane = id !== 419 || /window/i.test(mesh.name);
+      if (!material.emissive || (!namedWindow && !(windowMaterials.has(id) && cityPane))) return material;
+      const lit = material.clone();
+      lit.emissive.copy(windowGlow);
+      lit.emissiveIntensity = 0;
+      litWindows.add(lit);
+      return lit;
+    });
+    mesh.material = Array.isArray(mesh.material) ? updated : updated[0];
+  });
+}
+function setWindowGlow(intensity) {
+  for (const material of litWindows) material.emissiveIntensity = intensity;
+}
+new GLTFLoader().setDRACOLoader(draco).load('campus.glb?v=28',g=>{const model=g.scene;collectWindows(model,g.parser);if(g.animations.length){mixer=new THREE.AnimationMixer(model);g.animations.forEach(clip=>mixer.clipAction(clip).play());}model.traverse(o=>{if(o.isMesh){o.castShadow=!/^(Cluster\d_Star|Train|Rail|Bird)/.test(o.name);o.receiveShadow=true;const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){m.roughness=Math.max(m.roughness??.8,.75);}}});const box=new THREE.Box3();model.updateMatrixWorld(true);model.traverse(o=>{if(o.isMesh&&!/^(Train|Rail|Bird)/.test(o.name))box.expandByObject(o);});const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());const scale=3.6/Math.max(size.x,size.y,size.z);model.position.sub(center);const group=new THREE.Group();group.add(model);group.scale.setScalar(scale);group.position.y=size.y*scale/2;scene.add(group);renderer.shadowMap.needsUpdate=true;loading.hidden=true;resolveCampus({group,clips:g.animations});document.querySelector('#ar').disabled=false;},e=>{if(e.total)loading.textContent=`正在載入校園 ${Math.min(100,Math.round(e.loaded/e.total*100))}%`;},()=>{loading.textContent='模型載入失敗，請重新整理頁面。';rejectCampus(Error('校園模型載入失敗，請重新整理。'));});
 new ResizeObserver(()=>{const w=panel.clientWidth,h=panel.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.setViewOffset(w,h,0,h*.09,w,h);camera.updateProjectionMatrix();}).observe(panel);
 const phases = [
   [0, 0xffffff, 0xffffff, 0xfff5e7, 1.7, 0xffffff, .85, .55, 1],
@@ -54,6 +78,7 @@ function updateDaylight(delta) {
   fill.intensity = THREE.MathUtils.lerp(from.fillPower, to.fillPower, blend);
   key.shadow.intensity = THREE.MathUtils.lerp(from.shadow, to.shadow, blend);
   const whitening = THREE.MathUtils.smoothstep(dayTime, 22, 52) * (1 - THREE.MathUtils.smoothstep(dayTime, 72, 96));
+  setWindowGlow(1.45 * whitening);
   panel.style.setProperty("--lettering-white", whitening.toFixed(3));
   topColor.copy(from.top).lerp(to.top, blend);
   bottomColor.copy(from.bottom).lerp(to.bottom, blend);
@@ -72,7 +97,7 @@ renderer.setAnimationLoop(renderFrame);
 
 
 const ar=document.querySelector('#ar'),note=document.querySelector('#ar-note');
-setupCameraAR({button:ar,note,getCampus:()=>campusReady,onEnter:()=>renderer.setAnimationLoop(null),onExit:()=>{clock.start();renderer.setAnimationLoop(renderFrame);}});
+setupCameraAR({button:ar,note,getCampus:()=>campusReady,onEnter:()=>{renderer.setAnimationLoop(null);setWindowGlow(0);lastLightingTime=-1;},onExit:()=>{clock.start();renderer.setAnimationLoop(renderFrame);}});
 
 // Compact lettering only after a real orbit, not a click, pan, or zoom.
 const lettering=document.querySelector('.lettering');
@@ -85,6 +110,8 @@ new ResizeObserver(entries=>{document.querySelector('.actions').style.setPropert
 expoLink.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')expoLink.classList.add('is-touching');});
 const releaseExpo=()=>expoLink.classList.remove('is-touching');
 expoLink.addEventListener('pointerup',releaseExpo);expoLink.addEventListener('pointercancel',releaseExpo);expoLink.addEventListener('pointerleave',releaseExpo);
+
+
 
 
 
