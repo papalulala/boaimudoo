@@ -105,6 +105,22 @@ document.addEventListener('visibilitychange', syncHomeRendering);
 syncHomeRendering();
 
 
+const lettering = document.querySelector('.lettering');
+let orbitStart = null;
+controls.addEventListener('start', () => {
+  orbitStart = [controls.getAzimuthalAngle(), controls.getPolarAngle()];
+});
+controls.addEventListener('change', () => {
+  if (!orbitStart) return;
+  const [azimuth, polar] = orbitStart;
+  const turn = controls.getAzimuthalAngle() - azimuth;
+  const tilt = controls.getPolarAngle() - polar;
+  if (Math.hypot(Math.atan2(Math.sin(turn), Math.cos(turn)), tilt) > .006) {
+    lettering.classList.add('is-compact');
+    orbitStart = null;
+  }
+});
+controls.addEventListener('end', () => { orbitStart = null; });
 const ar=document.querySelector('#ar'),note=document.querySelector('#ar-note');
 setupCameraAR({
   button: ar, note, getCampus: () => campusReady,
@@ -116,3 +132,4 @@ setupCameraAR({
   },
   onExit: syncHomeRendering,
 });
+
