@@ -71,7 +71,7 @@ function updateDaylight(delta) {
   const from = phases[next - 1], to = phases[next];
   const fraction = (dayTime - from.time) / (to.time - from.time);
   const blend = fraction * fraction * (3 - 2 * fraction);
-  const state = next === 1 || next === 6 ? next : null;
+  const state = next === 1 || next === 5 ? next : null;
   if (state !== null && state === lastLightingState) return;
   lastLightingState = state;
   key.color.copy(from.sun).lerp(to.sun, blend);
@@ -132,4 +132,5 @@ setupCameraAR({
   },
   onExit: syncHomeRendering,
 });
+
 
